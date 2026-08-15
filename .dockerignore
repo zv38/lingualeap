@@ -1,0 +1,53 @@
+# 敏感配置：绝对禁止进入 Docker 镜像
+.env
+.env.*
+!.env.example
+
+# 密钥与证书
+*.key
+*.pem
+*.cert
+*.p12
+*.pfx
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# 日志与数据
+*.log
+logs/
+data/
+*.sqlite
+*.sqlite3
+audit-log.json
+isolation-state.json
+
+# 构建产物（由 Dockerfile 重新生成）
+dist/
+build/
+release/
+coverage/
+
+# 依赖
+node_modules/
+
+# 文档与测试
+docs/
+scripts/
+tests/
+__tests__/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# IDE
+.vscode/
+.idea/
+
+# 其他敏感文件
+.npmrc
+.yarnrc
+.pnpm-debug.log*

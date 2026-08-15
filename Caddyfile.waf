@@ -1,0 +1,70 @@
+# LinguaLeap 前置 Caddy + Coraza WAF 配置
+# 用法：caddy run --config Caddyfile.waf
+# 本配置在原有反向代理前叠加 Coraza WAF（OWASP CRS + 自定义规则）
+
+{
+    # 重要：Coraza 模块必须在其他处理器之前运行
+    order coraza_waf first
+    auto_https off
+}
+
+# 本地开发 HTTPS（自签名证书），所有流量先经过 Coraza WAF
+localhost:3443 {
+    tls internal
+
+    # 前置静态拦截：敏感路径直接 403，不进入业务逻辑
+    respond /.git/* 403
+    respond /@fs/* 403
+    respond /src/* 403
+    respond /scripts/* 403
+    respond /docs/* 403
+    respond /tests/* 403
+    respond /.env* 403
+    respond /*.map 403
+    respond /vite.config* 403
+
+    # Coraza WAF：OWASP CRS + 自定义加固规则
+    coraza_waf {
+        load_owasp_crs
+        directives `
+            Include @coraza.conf-recommended
+            Include @crs-setup.conf.example
+            Include @owasp_crs/*.conf
+            SecRuleEngine On
+
+            # 自定义规则：路径遍历 / 敏感文件探测
+            SecRule REQUEST_URI|ARGS "@rx (\.\./|etc/passwd|win\.ini|\.git/|\.env)" "id:1000,phase:1,deny,status:403,log,msg:'LinguaLeap: Path traversal or sensitive file probe'"
+
+            # 自定义规则：XSS 探测
+            SecRule ARGS|REQUEST_HEADERS:User-Agent "@rx (<script|javascript:|on\w+\s*=)" "id:1001,phase:2,deny,status:403,log,msg:'LinguaLeap: XSS probe'"
+
+            # 自定义规则：SQL 注入探测
+            SecRule ARGS "@rx (\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|EXEC|EXECUTE)\b.*\b(FROM|INTO|WHERE|TABLE|DATABASE)\b|'|--|;|1\s*=\s*1)" "id:1002,phase:2,deny,status:403,log,msg:'LinguaLeap: SQLi probe'"
+
+            # 自定义规则：命令注入 / SSRF 探测
+            SecRule ARGS "@rx (\$\(|\|\||&&|<\(|curl\s|wget\s|file://|gopher://|dict://)" "id:1003,phase:2,deny,status:403,log,msg:'LinguaLeap: Command injection or SSRF probe'"
+        `
+    }
+
+    # WAF 拦截后的统一响应
+    handle_errors 403 {
+        header X-Blocked-By "coraza-waf"
+        respond "请求被前置 WAF 拦截"
+    }
+
+    # API 代理到后端（支持 WebSocket）
+    reverse_proxy /api/* localhost:3001 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # 前端静态资源 / Vite dev server
+    reverse_proxy localhost:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

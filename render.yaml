@@ -1,0 +1,31 @@
+# Render 单服务部署配置
+# 前端 build 后由后端 Express 统一 serve，避免跨域问题
+services:
+  - type: web
+    name: lingualeap
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      # Render 会自动注入 PORT，无需手动设置
+      # 受信任反向代理模式：由 Render 终结 HTTPS，后端内部以 HTTP 运行
+      - key: TRUST_PROXY
+        value: "true"
+      # 以下敏感配置请在 Render Dashboard 里手动添加（不能在 render.yaml 明文提交）：
+      # JWT_SECRET / JWT_REFRESH_SECRET / PAYMENT_SECRET / ADMIN_PRIVACY_KEY
+      # ADMIN_CREATE_SECRET / ADMIN_PASSWORD_HASH / FILE_ENCRYPTION_KEYS
+      # ZHIPUAI_API_KEY（可选，AI 客服）
+      - key: REDIS_ENABLED
+        value: false
+      - key: RATE_LIMIT_STORE
+        value: memory
+      - key: AI_ENHANCED_DEFENSE
+        value: true
+      - key: WAF_RULES_ENABLED
+        value: true

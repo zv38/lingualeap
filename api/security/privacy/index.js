@@ -1,0 +1,33 @@
+export {
+  generateEncryptionKey,
+  loadEncryptionKeys,
+  getEncryptionKey,
+  getPrimaryKeyId,
+  hasEncryptionKey,
+  listKeyIds,
+  isEncrypted,
+  encrypt,
+  decrypt,
+  readEncryptedFile,
+  writeEncryptedFile,
+  deriveKeyFromPassword,
+  encryptWithPassword,
+  decryptWithPassword,
+  deriveUserDataKeyMaterial,
+  clearKeyCache,
+} from './fileVault.js'
+export { buildBaseline, verifyIntegrity, rebuildBaseline } from './fileGuardian.js'
+export {
+  hasPrivacyKey,
+  clearPrivacyKeyCache,
+  protectIp,
+  revealIp,
+  maskIp,
+  protectText,
+  revealText,
+  hashFingerprint,
+  protectLoginRecord,
+  protectDeviceRecord,
+  maskLoginRecord,
+  maskDeviceRecord,
+} from './adminPrivacyVault.js'

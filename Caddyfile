@@ -1,0 +1,45 @@
+# LinguaLeap 生产环境 Caddy 反向代理配置
+# 用法：caddy run --config Caddyfile
+# 本地开发可替换域名 localhost 为真实域名以启用自动 HTTPS
+
+{
+    auto_https off
+}
+
+# 本地开发使用 HTTPS 自签名证书
+localhost:3443 {
+    tls internal
+
+    # 安全：禁止访问敏感路径
+    respond /.git/* 403
+    respond /@fs/* 403
+    respond /src/* 403
+    respond /scripts/* 403
+    respond /docs/* 403
+    respond /tests/* 403
+    respond /.env* 403
+    respond /*.map 403
+    respond /vite.config* 403
+
+    # API 代理到后端（支持 WebSocket）
+    reverse_proxy /api/* localhost:3001 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # 前端静态资源 / Vite dev server
+    reverse_proxy localhost:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+# 生产环境示例（替换 your-domain.com）
+# your-domain.com {
+#     reverse_proxy /api/* localhost:3001
+#     reverse_proxy localhost:3000
+# }
