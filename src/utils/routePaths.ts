@@ -49,6 +49,7 @@ export const ROUTES = {
   adminSurveys: '/admin/surveys',
   securityCenter: '/security-center',
   membership: '/membership',
+  aiTutorDemo: '/ai-tutor-demo',
 }
 
 export const ROUTES_WILDCARD = '*'

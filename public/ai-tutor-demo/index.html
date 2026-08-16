@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>错题可视化 · AI 学习助教 Demo</title>
+<style>
+  :root {
+    --bg: #eeeeec;
+    --bg-2: #e6e6e3;
+    --surface: rgba(255,255,255,0.62);
+    --surface-solid: #fafaf8;
+    --line: rgba(28,26,24,0.08);
+    --ink: #2b2926;
+    --ink-soft: #6f6a63;
+    --ink-faint: #a39d94;
+    --accent: #6c5ce7;
+    --accent-2: #8b7cf0;
+    --accent-soft: rgba(108,92,231,0.12);
+    --good: #4c9a7a;
+    --warn: #d98a5a;
+    --shadow: 0 18px 50px -22px rgba(43,41,38,0.35);
+    --shadow-sm: 0 8px 24px -16px rgba(43,41,38,0.35);
+    --radius: 22px;
+    --radius-sm: 14px;
+    --font: "PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font); color: var(--ink);
+    background:
+      radial-gradient(1200px 600px at 85% -10%, rgba(108,92,231,0.10), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, rgba(76,154,122,0.08), transparent 55%),
+      linear-gradient(180deg, var(--bg), var(--bg-2));
+    min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content:""; position: fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.028'/%3E%3C/svg%3E");
+  }
+  .wrap { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; padding: 28px 24px 60px; }
+  header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 26px; gap:12px; flex-wrap:wrap; }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .brand-mark { width:42px; height:42px; border-radius:14px; position:relative; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--shadow-sm); }
+  .brand-mark::after { content:""; position:absolute; inset:9px; border-radius:9px; border:2.5px solid rgba(255,255,255,0.85); background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.6), transparent 60%); }
+  .brand h1 { font-size:19px; font-weight:650; letter-spacing:.3px; }
+  .brand p { font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
+  .head-right { display:flex; align-items:center; gap:10px; }
+  .chip {
+    display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft);
+    padding:7px 14px; border-radius:999px; background:var(--surface); border:1px solid var(--line);
+    backdrop-filter: blur(8px); box-shadow: var(--shadow-sm); cursor:pointer; transition: border-color .2s;
+  }
+  .chip:hover { border-color: var(--accent-2); }
+  .chip .st { width:7px; height:7px; border-radius:50%; background:var(--ink-faint); }
+  .chip.on .st { background:var(--good); box-shadow:0 0 0 3px rgba(76,154,122,0.2); }
+  .chip.on { color:var(--good); }
+  .gear-btn {
+    width:38px; height:38px; border-radius:12px; cursor:pointer; border:1px solid var(--line);
+    background:var(--surface); backdrop-filter: blur(8px); box-shadow: var(--shadow-sm);
+    display:flex; align-items:center; justify-content:center; transition: transform .2s ease, border-color .2s;
+  }
+  .gear-btn:hover { transform: rotate(30deg); border-color: var(--accent-2); }
+  .gear-btn svg { width:18px; height:18px; stroke:var(--ink-soft); }
+
+  .stage { display:grid; grid-template-columns: 380px 1fr; gap:20px; align-items:start; }
+  @media (max-width:960px){ .stage{ grid-template-columns:1fr; } }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); backdrop-filter: blur(16px) saturate(120%); padding:22px; }
+  .card h2 { font-size:14px; font-weight:640; letter-spacing:.4px; display:flex; align-items:center; gap:8px; margin-bottom:16px; }
+  .card h2 .dot { width:7px; height:7px; border-radius:50%; background:var(--accent); }
+
+  .preset { display:flex; flex-direction:column; gap:10px; margin-bottom:18px; }
+  .preset-btn { text-align:left; cursor:pointer; font-family:inherit; color:var(--ink); padding:13px 15px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--surface-solid); transition: all .25s ease; position:relative; overflow:hidden; }
+  .preset-btn:hover { border-color: var(--accent-2); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+  .preset-btn.active { border-color: var(--accent); background: var(--accent-soft); }
+  .preset-btn .t { font-size:13.5px; font-weight:600; }
+  .preset-btn .s { font-size:11.5px; color:var(--ink-soft); margin-top:3px; }
+  .preset-btn .tag { position:absolute; right:14px; top:14px; font-size:10.5px; color:var(--accent); border:1px solid var(--accent); border-radius:999px; padding:2px 8px; background:var(--surface); }
+
+  .lite-label { font-size:11.5px; color:var(--ink-faint); margin:16px 0 6px; letter-spacing:.5px; }
+  textarea { width:100%; min-height:74px; resize:vertical; font-family:inherit; font-size:13.5px; color:var(--ink); padding:12px 14px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--surface-solid); outline:none; transition:border .2s; }
+  textarea:focus { border-color: var(--accent); }
+  .primary { width:100%; margin-top:12px; cursor:pointer; font-family:inherit; font-size:14px; font-weight:600; color:#fff; padding:13px; border:none; border-radius:var(--radius-sm); background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: 0 10px 24px -12px rgba(108,92,231,0.7); transition: transform .2s ease, box-shadow .2s ease; }
+  .primary:hover { transform: translateY(-1px); box-shadow: 0 14px 30px -12px rgba(108,92,231,0.8); }
+  .primary:active { transform: translateY(0); }
+  .primary:disabled { opacity:.5; cursor:not-allowed; box-shadow:none; }
+
+  .explain-card { min-height: 420px; display:flex; flex-direction:column; }
+  .chat-head { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .chat-head .avt { width:34px;height:34px;border-radius:11px; flex:none; background:linear-gradient(135deg,var(--accent),var(--accent-2)); display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px; }
+  .chat-head .who { font-size:13px; font-weight:600; }
+  .chat-head .who small { display:block; font-weight:400; color:var(--ink-faint); font-size:11px; margin-top:1px; }
+  .chat-body { flex:1; display:flex; flex-direction:column; gap:12px; max-height: 480px; overflow-y:auto; padding-right:4px; }
+  .bubble { max-width:88%; padding:13px 16px; border-radius:16px; font-size:13.5px; line-height:1.7; animation: rise .5s cubic-bezier(.2,.8,.2,1) both; opacity:0; }
+  .bubble.user { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:6px; }
+  .bubble.ai { align-self:flex-start; background:var(--surface-solid); border:1px solid var(--line); border-bottom-left-radius:6px; }
+  .bubble.ai .step-tag { display:inline-block; font-size:11px; font-weight:600; color:var(--accent); background:var(--accent-soft); padding:2px 9px; border-radius:999px; margin-bottom:7px; }
+  .bubble.ai .step-tag.done { color:var(--good); background:rgba(76,154,122,0.12); }
+  .bubble .k { font-weight:650; margin:6px 0 2px; }
+  .bubble .kv { display:flex; gap:8px; margin:8px 0; }
+  .bubble .kv .lbl { flex:none; font-size:12px; color:var(--ink-faint); padding-top:1px; }
+  .bubble .kv .val { font-size:13.5px; }
+  .bubble .kv .val em { font-style:normal; color:var(--warn); font-weight:600; }
+  .bubble .kv .val b { color:var(--good); font-weight:650; }
+  .bubble.student { font-size:13px; color:var(--ink-soft); font-style:italic; }
+  .typing { display:flex; gap:5px; padding:6px 2px; align-items:center; }
+  .typing i { width:7px; height:7px; border-radius:50%; background:var(--accent); opacity:.3; animation: blink 1.2s infinite; }
+  .typing i:nth-child(2){ animation-delay:.2s } .typing i:nth-child(3){ animation-delay:.4s }
+  @keyframes blink { 0%,100%{opacity:.25; transform:translateY(0)} 50%{opacity:.9; transform:translateY(-3px)} }
+  @keyframes rise { from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:translateY(0)} }
+  .chat-foot { margin-top:14px; padding-top:14px; border-top:1px dashed var(--line); display:flex; align-items:center; justify-content:space-between; }
+  .chat-foot .hint { font-size:11.5px; color:var(--ink-faint); }
+  .chat-foot .mastery { font-size:12.5px; font-weight:650; color:var(--accent); display:flex; align-items:center; gap:6px; }
+
+  .map-card { margin-top:20px; }
+  .map-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:8px; }
+  .map-head .stat { font-size:12px; color:var(--ink-soft); }
+  .map-head .stat b { color:var(--accent); font-size:15px; }
+  .map-canvas { position:relative; height:300px; border-radius:var(--radius-sm); overflow:hidden; }
+  .map-canvas svg { position:absolute; inset:0; width:100%; height:100%; }
+  .node { transition: all .6s cubic-bezier(.2,.8,.2,1); }
+  .node circle { transition: all .6s cubic-bezier(.2,.8,.2,1); }
+  .node .ring { fill:none; stroke:var(--accent); stroke-width:1.5; opacity:0; transition: opacity .6s; }
+  .node.lit .ring { opacity:.9; animation: pulse 2.4s ease-out infinite; transform-origin:center; }
+  @keyframes pulse { 0%{ transform:scale(1); opacity:.9 } 70%{ transform:scale(1.9); opacity:0 } 100%{ opacity:0 } }
+  .map-canvas .lbl { font-size:11px; fill:var(--ink-soft); font-family:var(--font); }
+  .map-canvas .lbl.lit { fill:var(--ink); font-weight:600; }
+  .map-canvas .link { stroke:#c9c4bb; stroke-width:1.4; fill:none; opacity:.55; transition: stroke .6s; }
+  .map-canvas .link.lit { stroke:var(--accent); opacity:.5; }
+
+  .foot { margin-top:26px; text-align:center; font-size:12px; color:var(--ink-faint); }
+  .foot a { color:var(--accent); text-decoration:none; }
+
+  /* ===== 配置面板 ===== */
+  .overlay { position: fixed; inset:0; z-index:50; background:rgba(30,28,26,0.4); backdrop-filter: blur(4px); display:none; align-items:center; justify-content:center; padding:20px; }
+  .overlay.show { display:flex; }
+  .modal { width:100%; max-width:460px; background:var(--surface-solid); border-radius:var(--radius); box-shadow:var(--shadow); padding:24px; animation: rise .4s cubic-bezier(.2,.8,.2,1) both; }
+  .modal h3 { font-size:16px; font-weight:650; margin-bottom:4px; }
+  .modal .sub { font-size:12px; color:var(--ink-soft); margin-bottom:18px; }
+  .field { margin-bottom:14px; }
+  .field label { display:block; font-size:11.5px; color:var(--ink-soft); margin-bottom:6px; }
+  .field input { width:100%; font-family:inherit; font-size:13px; color:var(--ink); padding:10px 12px; border-radius:10px; border:1px solid var(--line); background:#fff; outline:none; transition:border .2s; }
+  .field input:focus { border-color: var(--accent); }
+  .field .tip { font-size:11px; color:var(--ink-faint); margin-top:5px; line-height:1.5; }
+  .modal-actions { display:flex; gap:10px; margin-top:8px; }
+  .btn { flex:1; cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:600; padding:11px; border-radius:11px; border:1px solid var(--line); background:#fff; color:var(--ink); transition: all .2s; }
+  .btn:hover { border-color: var(--accent-2); }
+  .btn.pri { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color:#fff; border:none; box-shadow: 0 8px 20px -10px rgba(108,92,231,0.7); }
+  .btn.pri:hover { transform: translateY(-1px); }
+
+  /* ===== 记录面板 ===== */
+  .records { margin-top:20px; }
+  .rec-item { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--surface-solid); margin-bottom:8px; }
+  .rec-item .rm { flex:none; font-size:12px; color:var(--accent); font-weight:650; background:var(--accent-soft); padding:3px 9px; border-radius:999px; }
+  .rec-item .rt { flex:1; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rec-item .rc { flex:none; font-size:11.5px; color:var(--ink-faint); }
+  .rec-item .rf { flex:none; font-size:11px; cursor:pointer; color:var(--warn); border:none; background:none; font-family:inherit; }
+  .rec-empty { text-align:center; color:var(--ink-faint); font-size:12.5px; padding:18px 0; }
+  .curve { display:flex; align-items:flex-end; gap:6px; height:46px; margin-top:6px; }
+  .curve .bn { flex:1; border-radius:6px 6px 0 0; background:linear-gradient(180deg, var(--accent), var(--accent-2)); opacity:.85; transition: height .6s cubic-bezier(.2,.8,.2,1); }
+  .curve .bn.empty { background:var(--line); opacity:.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div style="line-height:1.3">
+        <h1>错题可视化</h1>
+        <p>AI 学习助教 · demo 原型</p>
+      </div>
+    </div>
+    <div class="head-right">
+      <div class="chip" id="aiStatus"><span class="st"></span><span id="aiStatusText">演示模式</span></div>
+      <button class="gear-btn" id="openConfig" title="配置 AI">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="stage">
+    <div class="card">
+      <h2><span class="dot"></span>发一道错题</h2>
+      <div class="preset" id="presetList"></div>
+      <div class="lite-label">或手动输入你的错题 / 作答</div>
+      <textarea id="customInput" placeholder="把题目和你的作答过程粘贴在这里…"></textarea>
+      <button class="primary" id="sendBtn">开始诊断</button>
+    </div>
+
+    <div class="card explain-card">
+      <div class="chat-head">
+        <div class="avt">AI</div>
+        <div class="who">学习助教<small>先诊断，再开药 · 分步讲清为什么</small></div>
+      </div>
+      <div class="chat-body" id="chatBody">
+        <div class="bubble ai" style="animation-delay:.1s">
+          我是你的学习助教。发一道做错的题（或点左侧病例），我会先定位你错在哪一步，再分步讲清正确思路。<br/><br/>
+          未配置模型时，用内置病例演示；右上角齿轮可接入你自己的模型（OpenAI 兼容接口）。
+        </div>
+      </div>
+      <div class="chat-foot">
+        <span class="hint">病例 → 讲解与知识网同步点亮</span>
+        <span class="mastery" id="masteryLabel">掌握度 0%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card map-card">
+    <div class="map-head">
+      <h2 style="margin:0"><span class="dot"></span>错题地图 · 知识掌握状态</h2>
+      <span class="stat">已点亮 <b id="litCount">0</b> / <span id="totalCount">0</span> 个知识点</span>
+    </div>
+    <div class="map-canvas" id="mapCanvas"></div>
+  </div>
+
+  <div class="card records">
+    <h2><span class="dot"></span>错题记录 · 遗忘曲线</h2>
+    <div id="recordList"><div class="rec-empty">暂无记录，讲一道错题后会自动归档到这里。</div></div>
+    <div class="lite-label">近几次复习间隔（天）</div>
+    <div class="curve" id="curve"></div>
+  </div>
+
+  <div class="foot">
+    AI 学习助教（ai-tutor）skill 演示原型 · <a href="https://github.com/zv38/ai-tutor" target="_blank">查看源码</a>
+  </div>
+</div>
+
+<!-- 配置面板 -->
+<div class="overlay" id="configOverlay">
+  <div class="modal">
+    <h3>接入你的模型</h3>
+    <div class="sub">配置后，「开始诊断」将调用真实 AI 讲解；留空则使用内置病例演示。</div>
+    <div class="field">
+      <label>接口地址（Base URL）</label>
+      <input id="cfgUrl" placeholder="https://api.openai.com/v1" />
+      <div class="tip">OpenAI 兼容接口，如 OpenAI / DeepSeek / 自建服务。以 /v1 结尾。</div>
+    </div>
+    <div class="field">
+      <label>模型名</label>
+      <input id="cfgModel" placeholder="gpt-4o-mini" />
+    </div>
+    <div class="field">
+      <label>API Key</label>
+      <input id="cfgKey" type="password" placeholder="sk-..." />
+      <div class="tip">仅保存在本地浏览器（localStorage），不会上传到任何服务器。</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="clearConfig">清除配置</button>
+      <button class="btn pri" id="saveConfig">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ 配置存储 ============ */
+const STORE_KEY = "ai_tutor_demo_cfg";
+const REC_KEY = "ai_tutor_demo_records";
+const LIT_KEY = "ai_tutor_demo_lit";
+
+function loadConfig() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch(_) { return {}; }
+}
+function saveConfig(cfg) { localStorage.setItem(STORE_KEY, JSON.stringify(cfg)); }
+function clearConfig() { localStorage.removeItem(STORE_KEY); }
+
+/* ============ 病例数据 ============ */
+const CASES = [
+  { id:"quad", subject:"数学", tag:"二次函数", title:"求二次函数 y = -x² + 4x 的顶点坐标", student:"我用顶点公式 x = -b/2a，但算出 x = 4，然后 y = 0，顶点是（4,0）。", steps:[
+    { tag:"错因诊断", done:true, body:`你错在 <em>公式型</em> —— 代入时把负号带错了。<br><br><div class="kv"><span class="lbl">原因</span><span class="val">标准式是 y = ax² + bx + c，你这里 a = <b>-1</b> 而不是 1。求 x 时要代 <em>-b/2a</em>。</span></div>`},
+    { tag:"正确思路 · 第 1 步", done:true, body:`<div class="k">先认准 a、b、c</div>对齐标准式：a = <b>-1</b>，b = <b>4</b>，c = <b>0</b>。这里的 <b>a 是 -1</b>，不是 1。</div>`},
+    { tag:"正确思路 · 第 2 步", done:true, body:`<div class="k">代入顶点横坐标公式</div>x = -b/2a = -4 / (2 × -1) = -4 / -2 = <b>2</b>。负负得正，别漏掉 a 的负号。</div>`},
+    { tag:"正确思路 · 第 3 步", done:true, body:`<div class="k">代回求纵坐标</div>y = -(2)² + 4×2 = -4 + 8 = <b>4</b>，所以顶点是 <b>(2, 4)</b>。</div>`},
+    { tag:"关键对比", done:true, body:`<div class="kv"><span class="lbl">你的做法</span><span class="val">x = 4 / (2×1) = 4</span></div><div class="kv"><span class="lbl">正确做法</span><span class="val">x = -4 / (2×-1) = 2</span></div><div class="kv"><span class="lbl">差别</span><span class="val">丢掉 a 的负号，导致对称轴右移。</span></div></div>`},
+    { tag:"同类巩固", done:true, body:`<div class="k">试一道</div>求 y = -2x² + 8x - 3 的顶点坐标。做完发我。</div>`},
+  ], nodes:["二次函数","顶点公式","负号运算"] },
+  { id:"pyth", subject:"数学", tag:"勾股定理", title:"直角三角形两直角边为 6 和 8，求斜边", student:"斜边 = 6 + 8 = 14。", steps:[
+    { tag:"错因诊断", done:true, body:`你错在 <em>概念型</em> —— 把勾股定理记成了「相加」而非「平方和后开方」。<br><br><div class="kv"><span class="lbl">原因</span><span class="val">斜边 c 满足 <b>c² = a² + b²</b>。</span></div>`},
+    { tag:"正确思路 · 第 1 步", done:true, body:`<div class="k">写出定理</div>c² = a² + b² = 6² + 8² = 36 + 64 = <b>100</b>。</div>`},
+    { tag:"正确思路 · 第 2 步", done:true, body:`<div class="k">开方求 c</div>c = √100 = <b>10</b>。斜边是 10，不是 14。</div>`},
+    { tag:"关键对比", done:true, body:`<div class="kv"><span class="lbl">你的做法</span><span class="val">6 + 8 = 14</span></div><div class="kv"><span class="lbl">正确做法</span><span class="val">√(6² + 8²) = 10</span></div><div class="kv"><span class="lbl">差别</span><span class="val">「加」只在同向成立，斜边是二维合成，必须用平方和。</span></div></div>`},
+    { tag:"同类巩固", done:true, body:`<div class="k">试一道</div>两直角边为 5 和 12，求斜边。</div>`},
+  ], nodes:["勾股定理","平方开方","直角边 vs 斜边"] },
+  { id:"tense", subject:"英语", tag:"时态", title:"He ______ (go) to school every day.", student:"went", steps:[
+    { tag:"错因诊断", done:true, body:`你错在 <em>审题型</em> —— 漏看了时间标志 <b>every day</b>。<br><br><div class="kv"><span class="lbl">原因</span><span class="val">every day 是「一般现在时」的标志词，不是一般过去时。</span></div>`},
+    { tag:"正确思路 · 第 1 步", done:true, body:`<div class="k">找时间标志</div>every day → 一般现在时。主语 he 是第三人称单数。</div>`},
+    { tag:"正确思路 · 第 2 步", done:true, body:`<div class="k">动词变形</div>一般现在时 + 三单 → 动词加 s，go → <b>goes</b>。</div>`},
+    { tag:"关键对比", done:true, body:`<div class="kv"><span class="lbl">你的做法</span><span class="val">went（过去式）</span></div><div class="kv"><span class="lbl">正确做法</span><span class="val">goes（一般现在时三单）</span></div><div class="kv"><span class="lbl">差别</span><span class="val">时态由「时间标志 + 主语人称」共同决定。</span></div></div>`},
+    { tag:"同类巩固", done:true, body:`<div class="k">试一道</div>She ______ (watch) TV on Sundays. 做完发我。</div>`},
+  ], nodes:["时态","一般现在时","三单变化"] }
+];
+
+/* ============ 知识网 ============ */
+const GRAPH = {
+  center: { x: 300, y: 150, label:"学科" },
+  groups: [
+    { name:"数学", color:"#6c5ce7", nodes:[
+      {label:"二次函数", x:120, y:70},{label:"顶点公式", x:70, y:180},{label:"负号运算", x:180, y:250},
+      {label:"勾股定理", x:420, y:60},{label:"平方开方", x:500, y:150},{label:"直角边 vs 斜边", x:420, y:240},
+    ]},
+    { name:"英语", color:"#4c9a7a", nodes:[
+      {label:"时态", x:120, y:180, offset:true},{label:"一般现在时", x:180, y:110, offset:true},{label:"三单变化", x:60, y:250, offset:true},
+    ]}
+  ]
+};
+
+const litSet = new Set();
+let totalNodes = 0;
+const cfg = loadConfig();
+
+function buildGraph() {
+  const canvas = document.getElementById("mapCanvas");
+  const W = 700, H = 300;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">`;
+  svg += `<g class="node center lit"><circle cx="${GRAPH.center.x}" cy="${GRAPH.center.y}" r="26" fill="#fff" stroke="var(--accent)" stroke-width="2"/><text x="${GRAPH.center.x}" y="${GRAPH.center.y+4}" text-anchor="middle" class="lbl lit">学科</text></g>`;
+  let links = ""; let nodes = ""; let linkId = 0;
+  GRAPH.groups.forEach(g => {
+    g.nodes.forEach(n => {
+      const cx = n.offset ? 300 - (n.x - 300) : n.x;
+      const cy = n.y;
+      const dx = cx - GRAPH.center.x, dy = cy - GRAPH.center.y;
+      const cpx = GRAPH.center.x + dx*0.5, cpy = GRAPH.center.y + dy*0.5 - (dy*0.35);
+      links += `<path class="link" id="lk${linkId++}" d="M ${GRAPH.center.x} ${GRAPH.center.y} Q ${cpx} ${cpy} ${cx} ${cy}"/>`;
+      nodes += `<g class="node" data-label="${n.label}">
+        <circle class="ring" r="20"/><circle class="core" r="15" fill="#fff" stroke="${g.color}" stroke-width="2"/>
+        <text x="${cx}" y="${cy+4}" text-anchor="middle" class="lbl">${n.label}</text></g>`;
+    });
+  });
+  svg += links + nodes + `</svg>`;
+  canvas.innerHTML = svg;
+  totalNodes = GRAPH.groups.reduce((s,g)=>s+g.nodes.length,0);
+  document.getElementById("totalCount").textContent = totalNodes;
+  restoreLit();
+}
+
+function restoreLit() {
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem(LIT_KEY)) || []; } catch(_) {}
+  saved.forEach(label => {
+    const g = document.querySelector(`.node[data-label="${CSS.escape(label)}"]`);
+    if (g && !litSet.has(label)) { litSet.add(label); g.classList.add("lit"); }
+  });
+  // 点亮对应连线
+  document.querySelectorAll(".node.lit").forEach(g => {
+    const idx = Array.from(document.querySelectorAll(".node")).indexOf(g);
+    const link = document.querySelectorAll(".link")[idx];
+    if (link) link.classList.add("lit");
+  });
+  updateStat();
+}
+
+function lightNode(label) {
+  const g = document.querySelector(`.node[data-label="${CSS.escape(label)}"]`);
+  if (!g || litSet.has(label)) return;
+  litSet.add(label); g.classList.add("lit");
+  const idx = Array.from(document.querySelectorAll(".node")).indexOf(g);
+  const link = document.querySelectorAll(".link")[idx];
+  if (link) link.classList.add("lit");
+  localStorage.setItem(LIT_KEY, JSON.stringify([...litSet]));
+  updateStat();
+}
+
+function updateStat() {
+  document.getElementById("litCount").textContent = litSet.size;
+  document.getElementById("masteryLabel").textContent = `掌握度 ${totalNodes?Math.round(litSet.size/totalNodes*100):0}%`;
+}
+
+/* ============ 记录 / 遗忘曲线 ============ */
+function loadRecords() {
+  try { return JSON.parse(localStorage.getItem(REC_KEY)) || []; } catch(_) { return []; }
+}
+function saveRecords(recs) { localStorage.setItem(REC_KEY, JSON.stringify(recs)); }
+
+function addRecord(title, nodes, steps) {
+  const recs = loadRecords();
+  const now = Date.now();
+  recs.unshift({ id: now, title, nodes, count: 1, intervals: [1, 3, 7, 15, 30], createdAt: now });
+  // 切片：最多保留 20 条
+  saveRecords(recs.slice(0, 20));
+  renderRecords();
+}
+
+function renderRecords() {
+  const recs = loadRecords();
+  const list = document.getElementById("recordList");
+  if (!recs.length) {
+    list.innerHTML = `<div class="rec-empty">暂无记录，讲一道错题后会自动归档到这里。</div>`;
+  } else {
+    list.innerHTML = recs.map(r => `
+      <div class="rec-item">
+        <span class="rm">${r.nodes[0]||"知识点"}</span>
+        <span class="rt">${r.title}</span>
+        <span class="rc">${r.nodes.join(" · ")}</span>
+        <button class="rf" data-id="${r.id}">删除</button>
+      </div>`).join("");
+    list.querySelectorAll(".rf").forEach(b => b.addEventListener("click", () => {
+      saveRecords(loadRecords().filter(x => x.id !== Number(b.dataset.id)));
+      renderRecords();
+    }));
+  }
+  // 遗忘曲线柱状图
+  const curve = document.getElementById("curve");
+  const max = 30;
+  const intervals = recs.length ? recs[0].intervals : [1,3,7,15,30];
+  curve.innerHTML = intervals.map(i => `<div class="bn ${!recs.length?'empty':''}" style="height:${Math.round(i/max*100)}%" title="${i} 天"></div>`).join("");
+}
+
+/* ============ 渲染病例 / 讲解 ============ */
+function renderPresets() {
+  const list = document.getElementById("presetList");
+  list.innerHTML = CASES.map((c,i)=>`
+    <button class="preset-btn" data-i="${i}"><span class="tag">${c.subject}</span><div class="t">${c.title}</div><div class="s">${c.tag}</div></button>`).join("");
+  list.querySelectorAll(".preset-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      list.querySelectorAll(".preset-btn").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      run(parseInt(btn.dataset.i));
+    });
+  });
+}
+
+const chatBody = document.getElementById("chatBody");
+const sendBtn = document.getElementById("sendBtn");
+
+function addBubble(cls, html) {
+  const el = document.createElement("div");
+  el.className = "bubble " + cls; el.innerHTML = html;
+  chatBody.appendChild(el); chatBody.scrollTop = chatBody.scrollHeight;
+  return el;
+}
+
+async function streamSteps(steps, nodes) {
+  for (const s of steps) {
+    const t = addBubble("ai", `<div class="typing"><i></i><i></i><i></i></div>`);
+    t.style.animation = "none"; t.style.opacity = 1;
+    await sleep(650); t.remove();
+    addBubble("ai", `<span class="step-tag ${s.done?'done':''}">${s.tag}</span>${s.body}`);
+    await sleep(420);
+  }
+  if (nodes) nodes.forEach((n,i)=> setTimeout(()=>lightNode(n), i*260 + 200));
+  await sleep(700);
+  addBubble("ai", `<span class="step-tag done">完成</span>知识点已点亮到错题地图。`);
+}
+
+async function run(idx) {
+  const c = CASES[idx];
+  chatBody.innerHTML = "";
+  addBubble("user", c.title);
+  await sleep(400);
+  addBubble("student", `我的作答：${c.student}`);
+  await sleep(500);
+  await streamSteps(c.steps, c.nodes);
+  addRecord(c.title, c.nodes, c.steps);
+  updateAiStatus();
+}
+
+/* ============ 真实 AI 讲解 ============ */
+async function callAI(question, answer) {
+  const cfg = loadConfig();
+  const url = (cfg.url||"").trim().replace(/\/+$/,"");
+  if (!url || !cfg.model || !cfg.key) return null;
+  const system = `你是一位耐心的初高中学习助教。请针对下面这道学生做错的题，先诊断错因，再分步讲清正确思路，最后给一道同类巩固题。输出严格按如下 JSON 数组格式（不要输出其他内容）：
+[{"tag":"错因诊断","done":true,"body":"..."},{"tag":"正确思路 · 第 1 步","done":true,"body":"..."},...,{"tag":"同类巩固","done":true,"body":"..."}]
+body 中可用 <b>、<em>、<div class="kv"> 等简单 HTML 强调关键点。`;
+  try {
+    const res = await fetch(`${url}/chat/completions`, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json", "Authorization":`Bearer ${cfg.key}` },
+      body: JSON.stringify({ model: cfg.model, messages:[{role:"system",content:system},{role:"user",content:`题目：${question}\n我的作答：${answer}`}], temperature:0.4 })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content || "";
+    const arr = JSON.parse(content.match(/\[[\s\S]*\]/)?.[0] || "[]");
+    return Array.isArray(arr) ? arr.map(s => ({ tag:s.tag||"步骤", done:true, body:s.body||"" })) : null;
+  } catch(e) { return { error: e.message }; }
+}
+
+async function runFree() {
+  const q = document.getElementById("customInput").value.trim();
+  if (!q) return;
+  chatBody.innerHTML = "";
+  addBubble("user", "手动错题");
+  addBubble("student", q);
+  const cfg = loadConfig();
+  if (cfg.url && cfg.model && cfg.key) {
+    addBubble("ai", `<span class="step-tag">调用模型中</span>正在分析你的错题…`);
+    const result = await callAI(q, "");
+    chatBody.innerHTML = "";
+    addBubble("user", "手动错题");
+    addBubble("student", q);
+    if (result && !result.error) {
+      await streamSteps(result, []);
+      addRecord(q.slice(0,40), [], result);
+    } else {
+      addBubble("ai", `<span class="step-tag">提示</span>${result?.error||"配置无效"}，已回落演示模式。请检查右上角的模型配置。`);
+    }
+  } else {
+    addBubble("ai", `<span class="step-tag">提示</span>当前为演示模式，未配置模型。右上角齿轮可接入你自己的模型获取真实讲解；或点击左侧任一病例体验。`);
+  }
+  updateAiStatus();
+}
+
+/* ============ AI 状态 / 配置面板 ============ */
+function updateAiStatus() {
+  const cfg = loadConfig();
+  const on = !!(cfg.url && cfg.model && cfg.key);
+  const chip = document.getElementById("aiStatus");
+  chip.classList.toggle("on", on);
+  document.getElementById("aiStatusText").textContent = on ? `已接入 · ${cfg.model}` : "演示模式";
+}
+
+function openConfig() {
+  const cfg = loadConfig();
+  document.getElementById("cfgUrl").value = cfg.url || "https://api.openai.com/v1";
+  document.getElementById("cfgModel").value = cfg.model || "";
+  document.getElementById("cfgKey").value = cfg.key || "";
+  document.getElementById("configOverlay").classList.add("show");
+}
+
+document.getElementById("openConfig").addEventListener("click", openConfig);
+document.getElementById("configOverlay").addEventListener("click", (e)=>{ if(e.target.id==="configOverlay") e.target.classList.remove("show"); });
+document.getElementById("saveConfig").addEventListener("click", ()=>{
+  saveConfig({
+    url: document.getElementById("cfgUrl").value.trim(),
+    model: document.getElementById("cfgModel").value.trim(),
+    key: document.getElementById("cfgKey").value.trim()
+  });
+  document.getElementById("configOverlay").classList.remove("show");
+  updateAiStatus();
+  addBubble("ai", `<span class="step-tag done">配置已保存</span>现在可以输错题，我会调用你的模型做真实讲解。`);
+});
+document.getElementById("clearConfig").addEventListener("click", ()=>{
+  clearConfig();
+  document.getElementById("configOverlay").classList.remove("show");
+  updateAiStatus();
+});
+
+sendBtn.addEventListener("click", runFree);
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+buildGraph();
+renderPresets();
+renderRecords();
+updateAiStatus();
+</script>
+</body>
+</html>

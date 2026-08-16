@@ -78,6 +78,7 @@ const Membership = React.lazy(() => import('./pages/Membership'))
 const Appeal = React.lazy(() => import('./pages/Appeal'))
 const SecurityPolicyPage = React.lazy(() => import('./pages/SecurityPolicyPage'))
 const AdminAppealPanel = React.lazy(() => import('./pages/AdminAppealPanel'))
+const AiTutorDemo = React.lazy(() => import('./pages/AiTutorDemo'))
 
 // 平滑页面切换：使用更长的持续时间和更柔和的缓动，避免 spring 的急促感
 // 仅使用 opacity + Y 位移，保证性能；Y 轴移动稍大以增强“进入感”
@@ -367,6 +368,7 @@ function App() {
           <Route path={ROUTES.adminSurveys} element={<ErrorBoundary><AnimatedPage><PrivacyRoute><AdminRoute><AdminSurveys /></AdminRoute></PrivacyRoute></AnimatedPage></ErrorBoundary>} />
           <Route path={ROUTES.securityCenter} element={<ErrorBoundary><AnimatedPage><PrivacyRoute><ProtectedRoute><SecurityCenter /></ProtectedRoute></PrivacyRoute></AnimatedPage></ErrorBoundary>} />
           <Route path={ROUTES.membership} element={<ErrorBoundary><AnimatedPage><PrivacyRoute><ProtectedRoute><Membership /></ProtectedRoute></PrivacyRoute></AnimatedPage></ErrorBoundary>} />
+          <Route path={ROUTES.aiTutorDemo} element={<ErrorBoundary><AnimatedPage><AiTutorDemo /></AnimatedPage></ErrorBoundary>} />
           <Route path={ROUTES_WILDCARD} element={<Navigate to="/" replace />} />
           </Routes>
         </AnimatePresence>
