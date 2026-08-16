@@ -160,4 +160,14 @@ npm run preview
 
 ## 许可证
 
-MIT
+本项目基于 [MIT License](./LICENSE) 开源。你可以自由地使用、修改、分发和商用本项目的代码，但需保留版权声明和许可声明。
+
+## 第三方依赖许可合规
+
+本项目通过 npm 管理第三方依赖，所有依赖均遵循其各自的许可证（以 MIT、Apache-2.0、BSD、ISC 等宽松许可证为主）：
+
+- **供应链校验**：`npm run security:verify-deps` 校验依赖完整性与安全
+- **软件物料清单（SBOM）**：`npm run security:sbom` 生成依赖清单
+- 生产构建（`npm run build`）会自动执行上述安全校验
+
+如果你的使用场景涉及 GPL 类 copyleft 依赖，请先与维护者确认合规性。
